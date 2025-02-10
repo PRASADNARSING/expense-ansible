@@ -1,41 +1,42 @@
-- name: configure mysql server
+- name: Configure MySQL Server
   hosts: mysql
   become: yes
   vars:
-    mysql_root_password: ExpenseApp@1
+    mysql_root_password: "ExpenseApp@1"
   tasks:
-  - name: Install MySQL libraries
+
+  - name: Install required Python libraries
     ansible.builtin.pip:
       name: "{{ item }}"
-      executable: pip3.9
+      executable: pip3
     loop:
-    - cryptography
-    - PyMySQL
+      - cryptography
+      - PyMySQL
 
   - name: Install MySQL server
     ansible.builtin.package:
       name: mysql-server
-      state: installed
+      state: present
 
-  - name: start and enable mysql server
+  - name: Start and enable MySQL service
     ansible.builtin.service:
-      name: mysqld
+      name: "{{ 'mysqld' if ansible_os_family == 'RedHat' else 'mysql' }}"
       state: started
       enabled: yes
 
-  - name: connect to mysql server
+  - name: Check if root login works
     community.mysql.mysql_info:
       login_user: root
       login_password: "{{ mysql_root_password }}"
-      login_host: mysql.expense.ltd
+      login_host: localhost
     register: mysql_info
     ignore_errors: true
 
-  - name: print the output
+  - name: Print MySQL connection info
     ansible.builtin.debug:
       msg: "MySQL info: {{ mysql_info }}"
 
-  - name: setup root password
-    ansible.builtin.command: " mysql_secure_installation --set-root-pass {{ mysql_root_password }} "
+  - name: Set root password manually if login fails
+    ansible.builtin.command: |
+      mysql -e "ALTER USER 'root'@'localhost' IDENTIFIED WITH mysql_native_password BY '{{ mysql_root_password }}'; FLUSH PRIVILEGES;"
     when: mysql_info.failed is true
-
