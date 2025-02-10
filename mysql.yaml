@@ -24,15 +24,25 @@
           - PyMySQL
         executable: pip3
 
-    - name: Secure MySQL Installation - Set Root Password
-      command: mysql_secure_installation --set-root-pass ExpenseApp@1
+    - name: Ensure MySQL root password is set
+      community.mysql.mysql_user:
+        name: root
+        password: ExpenseApp@1
+        login_unix_socket: /var/lib/mysql/mysql.sock
+        host_all: yes
+        priv: "*.*:ALL,GRANT"
+        state: present
+
 
 
     - name: Remove Anonymous Users
       community.mysql.mysql_user:
-        name: ''
-        host_all: true
+        name: ""
+        host_all: yes
         state: absent
+        login_user: root
+        login_password: ExpenseApp@1
+
 
     - name: Remove Test Database
       community.mysql.mysql_db:
